@@ -1,4 +1,4 @@
-FluxTranslate — LLM Inline Translator (Chrome Extension)
+#FluxTranslate — LLM Inline Translator (Chrome Extension)
 
 Overview
 - Inline page translation with OpenAI/Anthropic/Gemini via a Chrome extension (MV3)
