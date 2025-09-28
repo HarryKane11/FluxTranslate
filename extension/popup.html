@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FluxTranslate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app" class="glass">
+      <div id="main-ui">
+        <div class="hdr">
+          <div class="logo">FluxTranslate</div>
+          <button id="btn-translate" class="primary">Translate Page</button>
+        </div>
+
+      <div class="row">
+        <label>Target language</label>
+        <input id="inp-lang" placeholder="e.g. ko, en, ja" />
+      </div>
+      <div class="row">
+        <label>Tone / Style</label>
+        <input id="inp-tone" placeholder="예: 친근하고 자연스러운 반말, 업계 용어 유지" />
+        <button id="btn-tone-save" class="small">Save as Custom</button>
+      </div>
+      <div class="row two">
+        <div>
+          <label>Provider</label>
+          <select id="sel-provider">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Gemini</option>
+            <option value="groq">Groq</option>
+          </select>
+        </div>
+        <div>
+          <label>Model</label>
+          <input id="inp-model" placeholder="e.g. gpt-4.1-mini" list="model-suggestions" />
+          <datalist id="model-suggestions"></datalist>
+        </div>
+      </div>
+        <div class="row" id="row-apikey">
+          <label>API Key (BYOK)</label>
+          <input id="inp-apikey" placeholder="Paste your API Key" />
+        </div>
+
+      <div class="row two">
+        <label class="switch"><input id="chk-autoload" type="checkbox" /> <span>Auto-translate on load</span></label>
+        <button id="btn-options">Options</button>
+      </div>
+
+      <div class="row two">
+        <button id="btn-restore">Restore</button>
+        <button id="btn-clear-cache">Clear Cache</button>
+      </div>
+
+        <div class="foot"></div>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+  </html>

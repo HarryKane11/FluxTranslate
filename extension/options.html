@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FluxTranslate — Options</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>FluxTranslate</h1>
+        <p>LLM Inline Translation — configurable, fast, beautiful.</p>
+      </header>
+
+      <section class="card">
+        <h2>General</h2>
+        <div class="grid">
+          <label>Target language <input id="opt-lang" placeholder="ko" /></label>
+          <label>Auto-translate <input id="opt-autoload" type="checkbox" /></label>
+          <label>Tone/style <input id="opt-tone" placeholder="친근하고 자연스러운 반말" /></label>
+          <label>Max concurrency <input id="opt-conc" type="number" min="1" max="10" /></label>
+          <label>Batch char budget <input id="opt-budget" type="number" min="500" max="12000" /></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Provider (BYOK)</h2>
+        <div class="grid">
+          <label>Provider
+            <select id="opt-provider">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="gemini">Gemini</option>
+              <option value="groq">Groq</option>
+            </select>
+          </label>
+          <label>Model <input id="opt-model" placeholder="e.g. gpt-4.1-mini" list="opt-model-suggestions"/></label>
+          <datalist id="opt-model-suggestions"></datalist>
+          <label id="row-apikey">API Key <input id="opt-apikey" placeholder="Paste your API key"/></label>
+        </div>
+        <div class="help">Latest models evolve quickly; enter any supported name for your provider. For OpenAI, try <code>gpt-4.1-mini</code>. For Anthropic, try <code>claude-3-5-sonnet-latest</code>. For Gemini, try <code>gemini-1.5-pro</code>. For Groq, try <code>llama-3.3-70b-versatile</code>.</div>
+      </section>
+
+      <!-- Account section removed (no login) -->
+
+      <section class="card">
+        <h2>Glossary</h2>
+        <div class="help">Guarantee consistent term translations. One per line, using "source -> target".</div>
+        <textarea id="opt-glossary" rows="8" placeholder="GPU -> GPU\nFoundation Model -> 기초 모델"></textarea>
+      </section>
+
+      <!-- Plans/billing removed (free & BYOK) -->
+
+      <footer>
+        <button id="btn-save">Save</button>
+        <span id="save-state"></span>
+      </footer>
+    </main>
+    <script src="options.js"></script>
+  </body>
+  </html>
