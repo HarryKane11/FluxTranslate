@@ -1,27 +1,33 @@
 :root{
-  --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.25));
-  --glass-border: rgba(255,255,255,0.45);
-  --primary: #7c3aed;
-  --accent: #06b6d4;
+  --glass-bg: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.35));
+  --glass-border: rgba(0,0,0,0.12);
+  --primary: #7c3aed; /* single accent */
 }
 *{ box-sizing: border-box; }
-html, body{
-  margin:0; padding:0; width:340px; background: radial-gradient(circle at 10% 10%, #f7f2ff, #e9fbff); font-family: ui-sans-serif, system-ui, Segoe UI, Roboto;
-}
+html, body{ margin:0; padding:0; width:340px; background:#fafafa; font-family: ui-sans-serif, system-ui, Segoe UI, Roboto; color:#111; }
 .glass{
   margin:12px; padding:14px; border-radius:16px; background: var(--glass-bg);
   backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
   border: 1px solid var(--glass-border); box-shadow: 0 10px 30px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(255,255,255,0.35);
 }
 .hdr{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.logo{ font-weight:700; background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.logo{ font-weight:700; color:#111; }
 .row{ display:flex; flex-direction:column; gap:6px; margin:10px 0; }
 .row.two{ flex-direction:row; gap:8px; }
 label{ font-size:12px; color:#333 }
 input, select{ padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.8); font-size:13px; }
-button{ padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.85); cursor:pointer; }
-button.primary{ background: linear-gradient(90deg, var(--primary), var(--accent)); color:#fff; border: none; }
+button{ padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.85); cursor:pointer; transition: background .16s ease, box-shadow .16s ease, transform .06s ease; }
+button:focus-visible{ outline: 2px solid rgba(124,58,237,.55); outline-offset: 2px; }
+button:active{ transform: translateY(1px); }
+button.primary{ background: var(--primary); color:#fff; border: none; }
 .switch{ display:flex; align-items:center; gap:8px; }
 .foot{ display:flex; justify-content:flex-end; }
 .foot a{ font-size:12px; color: var(--primary); text-decoration: none; }
+
+@media (prefers-color-scheme: dark){
+  html, body{ background:#0f1115; color:#eaeaf0; }
+  .glass{ background: linear-gradient(135deg, rgba(20,22,27,0.85), rgba(20,22,27,0.55)); border-color: rgba(255,255,255,0.10); box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.06); }
+  input, select{ background: rgba(20,22,27,0.9); border:1px solid rgba(255,255,255,0.08); color:#eaeaf0 }
+  button{ background: #1a1d24; color:#eaeaf0; border-color: rgba(255,255,255,0.08) }
+}
 

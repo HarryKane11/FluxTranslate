@@ -25,6 +25,27 @@
       </section>
 
       <section class="card">
+        <h2>Panel</h2>
+        <div class="grid">
+          <label>Start collapsed <input id="opt-panel-collapsed" type="checkbox" /></label>
+          <label>Auto-hide (ms) <input id="opt-panel-autohide" type="number" min="0" max="60000" /></label>
+          <label>Remember position <input id="opt-panel-remember" type="checkbox" /></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Sites</h2>
+        <div class="grid">
+          <label>Always translate (one host per line)
+            <textarea id="opt-sites-always" rows="4" placeholder="example.com"></textarea>
+          </label>
+          <label>Exclude from auto-translate (one host per line)
+            <textarea id="opt-sites-never" rows="4" placeholder="news.example.com"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
         <h2>Provider (BYOK)</h2>
         <div class="grid">
           <label>Provider
@@ -48,6 +69,27 @@
         <h2>Glossary</h2>
         <div class="help">Guarantee consistent term translations. One per line, using "source -> target".</div>
         <textarea id="opt-glossary" rows="8" placeholder="GPU -> GPU\nFoundation Model -> 기초 모델"></textarea>
+      </section>
+
+      <section class="card">
+        <h2>Cache</h2>
+        <div class="grid">
+          <label>Max cached items <input id="opt-cache-max" type="number" min="50" max="20000" /></label>
+          <label>Cache stats <input id="opt-cache-stats" disabled placeholder="items: 0, updated: -" /></label>
+        </div>
+        <div class="actions">
+          <button id="btn-clear-cache">Clear Cache</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Import / Export</h2>
+        <div class="actions">
+          <button id="btn-export">Export Settings</button>
+          <button id="btn-import">Import Settings</button>
+          <input id="file-import" type="file" accept="application/json" style="display:none" />
+        </div>
+        <div class="help">Export includes provider API keys stored locally. Import will overwrite current settings and keys.</div>
       </section>
 
       <!-- Plans/billing removed (free & BYOK) -->
