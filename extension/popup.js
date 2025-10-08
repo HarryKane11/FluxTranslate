@@ -141,8 +141,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const apikey = document.getElementById('inp-apikey');
   const apiKeyRow = document.getElementById('row-apikey');
   const autoload = document.getElementById('chk-autoload');
+  const siteAlways = document.getElementById('chk-site-always');
+  const siteNever = document.getElementById('chk-site-never');
   const btnTranslate = document.getElementById('btn-translate');
   const btnRestore = document.getElementById('btn-restore');
+  const panelPinned = null;
+  const panelHidden = null;
 
   function applyMainState(){
     if (lang) lang.value = s.targetLang || '';
@@ -153,6 +157,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   applyMainState();
   if (apikey) apikey.value = await getApiKey(provider.value);
+
+  // Current site host
+  let currentHost = '';
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.url){
+      try { const u = new URL(tab.url); currentHost = (u.hostname || '').toLowerCase().replace(/^www\./,''); } catch {}
+    }
+  } catch {}
+
+  function syncSiteToggles(){
+    const sAlways = (s.sites && s.sites.always) || [];
+    const sNever = (s.sites && s.sites.never) || [];
+    if (siteAlways) siteAlways.checked = !!(currentHost && sAlways.includes(currentHost));
+    if (siteNever) siteNever.checked = !!(currentHost && sNever.includes(currentHost));
+    // mutually exclusive UI
+    if (siteAlways && siteNever){
+      if (siteAlways.checked) siteNever.checked = false;
+      if (siteNever.checked) siteAlways.checked = false;
+    }
+    // panel toggles removed from popup UI
+  }
+  syncSiteToggles();
 
   async function refreshModelSuggestions() {
     if (!modelList) return;
@@ -210,6 +237,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
   autoload.addEventListener('change', () => setSettings({ translateOnLoad: autoload.checked }));
+  if (siteAlways) siteAlways.addEventListener('change', async () => {
+    try{
+      const cur = (await getSettings()).sites || { always: [], never: [] };
+      const host = currentHost; if (!host) return;
+      const a = new Set(cur.always || []); const n = new Set(cur.never || []);
+      if (siteAlways.checked){ a.add(host); n.delete(host); } else { a.delete(host); }
+      await setSettings({ sites: { always: Array.from(a), never: Array.from(n) } });
+    } catch {}
+    syncSiteToggles();
+  });
+  if (siteNever) siteNever.addEventListener('change', async () => {
+    try{
+      const cur = (await getSettings()).sites || { always: [], never: [] };
+      const host = currentHost; if (!host) return;
+      const a = new Set(cur.always || []); const n = new Set(cur.never || []);
+      if (siteNever.checked){ n.add(host); a.delete(host); } else { n.delete(host); }
+      await setSettings({ sites: { always: Array.from(a), never: Array.from(n) } });
+    } catch {}
+    syncSiteToggles();
+  });
+
+  // panel toggles removed from popup UI
   if (apikey) apikey.addEventListener('change', () => setApiKey(provider.value, apikey.value));
 
   document.getElementById('btn-translate').addEventListener('click', async () => {

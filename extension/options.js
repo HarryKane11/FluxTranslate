@@ -56,6 +56,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const apikey = document.getElementById('opt-apikey');
   const apiKeyRow = document.getElementById('row-apikey');
   const glossary = document.getElementById('opt-glossary');
+  const panelCollapsed = document.getElementById('opt-panel-collapsed');
+  const panelAutoHide = document.getElementById('opt-panel-autohide');
+  const panelRemember = document.getElementById('opt-panel-remember');
+  const sitesAlways = document.getElementById('opt-sites-always');
+  const sitesNever = document.getElementById('opt-sites-never');
+  const cacheMax = document.getElementById('opt-cache-max');
+  const cacheStats = document.getElementById('opt-cache-stats');
+  const btnClearCache = document.getElementById('btn-clear-cache');
+  const btnExport = document.getElementById('btn-export');
+  const btnImport = document.getElementById('btn-import');
+  const fileImport = document.getElementById('file-import');
   const saveBtn = document.getElementById('btn-save');
   const saveState = document.getElementById('save-state');
   // Auth/billing removed
@@ -64,11 +75,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   autoload.checked = !!s.translateOnLoad;
   tone.value = s.tone || '';
   conc.value = s.maxConcurrentBatches || 4;
-  budget.value = s.batchCharBudget || 3500;
+  budget.value = (typeof s.batchCharBudget === 'number') ? s.batchCharBudget : 1200;
   provider.value = s.provider || 'openai';
   model.value = s.model || 'gpt-4.1-mini';
   apikey.value = await getApiKey(provider.value);
   glossary.value = serializeGlossary(s.glossary);
+  // Panel defaults
+  const p = s.panel || {};
+  if (panelCollapsed) panelCollapsed.checked = !!p.collapsed;
+  if (panelAutoHide) panelAutoHide.value = (typeof p.autoHideMs==='number' ? p.autoHideMs : 8000);
+  if (panelRemember) panelRemember.checked = (p.rememberPos !== false);
+  // Sites
+  function serializeHosts(list){ return (Array.isArray(list) ? list : []).join('\n'); }
+  function parseHosts(text){ return (text||'').split(/\r?\n/).map(x=>x.trim().toLowerCase().replace(/^www\./,'')).filter(Boolean); }
+  if (sitesAlways) sitesAlways.value = serializeHosts((s.sites && s.sites.always) || []);
+  if (sitesNever) sitesNever.value = serializeHosts((s.sites && s.sites.never) || []);
+  // Cache
+  if (cacheMax) cacheMax.value = (typeof s.cacheMaxItems === 'number' ? s.cacheMaxItems : 2000);
+  async function refreshCacheStats(){ try{ const r = await chrome.runtime.sendMessage({ type:'get_cache_stats' }); if (r?.ok && cacheStats){ const dt = r.lastUpdated ? new Date(r.lastUpdated) : null; cacheStats.value = `items: ${r.count||0}, updated: ${dt?dt.toLocaleString(): '-'}`; if (cacheMax && typeof r.limit === 'number') cacheMax.value = r.limit; } } catch(_){} }
+  refreshCacheStats();
 
   // Always BYOK mode: show API key input
   function renderBillingUI(){ if (apiKeyRow) apiKeyRow.style.display = ''; if (apikey) apikey.disabled = false; }
@@ -111,10 +136,46 @@ document.addEventListener('DOMContentLoaded', async () => {
       provider: provider.value,
       model: model.value.trim() || 'gpt-4.1-mini',
       glossary: parseGlossary(glossary.value),
+      sites: { always: parseHosts(sitesAlways && sitesAlways.value), never: parseHosts(sitesNever && sitesNever.value) },
+      cacheMaxItems: Math.max(50, Math.min(20000, parseInt(cacheMax && cacheMax.value)||2000)),
+      panel: {
+        pinned: !!(p.pinned),
+        collapsed: !!(panelCollapsed && panelCollapsed.checked),
+        autoHideMs: Math.max(0, Math.min(60000, parseInt(panelAutoHide && panelAutoHide.value)||8000)),
+        rememberPos: !!(panelRemember && panelRemember.checked),
+        pos: (p.pos || { right: 20, bottom: 20 })
+      }
     });
     await setApiKey(provider.value, apikey.value.trim());
     saveState.textContent = 'Saved';
     setTimeout(() => saveState.textContent = '', 1500);
+    refreshCacheStats();
   });
   // No auth flows
+
+  if (btnClearCache) btnClearCache.addEventListener('click', async () => { try{ await chrome.runtime.sendMessage({ type:'clear_cache' }); } catch(_){} refreshCacheStats(); });
+
+  if (btnExport) btnExport.addEventListener('click', async () => {
+    try{
+      const full = await chrome.storage.local.get(null);
+      const blob = new Blob([JSON.stringify(full, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'fluxtranslate-settings.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    } catch(_){ }
+  });
+  if (btnImport) btnImport.addEventListener('click', () => { if (fileImport) fileImport.click(); });
+  if (fileImport) fileImport.addEventListener('change', async () => {
+    try{
+      const f = fileImport.files && fileImport.files[0]; if (!f) return;
+      const text = await f.text();
+      const data = JSON.parse(text);
+      // Overwrite everything we know
+      await chrome.storage.local.clear();
+      await chrome.storage.local.set(data || {});
+      saveState.textContent = 'Imported'; setTimeout(() => saveState.textContent = '', 1500);
+      location.reload();
+    } catch(_){ }
+  });
 });

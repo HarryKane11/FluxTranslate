@@ -13,6 +13,16 @@ const DEFAULT_SETTINGS = {
   maxConcurrentBatches: 6,
   batchCharBudget: 1200,
   glossary: [], // [{from:'term', to:'번역어'}]
+  sites: { always: [], never: [] },
+  cacheMaxItems: 2000,
+  panel: {
+    pinned: false,
+    collapsed: true,
+    autoHideMs: 8000,
+    rememberPos: true,
+    pos: { right: 20, bottom: 20 }
+  },
+  sitesPanel: { pinned: [], hidden: [] },
 };
 
 const PROVIDER_KEYS = {
@@ -129,7 +139,16 @@ async function putCache(key, value) {
   if (!cache.order) cache.order = [];
   if (!(key in cache.map)) cache.order.push(key);
   cache.map[key] = { value, t: Date.now() };
-  while (cache.order.length > LRU_MAX_ITEMS) {
+  // respect per-user setting for cache max items
+  let maxItems = LRU_MAX_ITEMS;
+  try {
+    const { settings } = await chrome.storage.local.get('settings');
+    const s = settings || {};
+    if (typeof s.cacheMaxItems === 'number' && s.cacheMaxItems > 0) {
+      maxItems = Math.min(20000, Math.max(50, s.cacheMaxItems));
+    }
+  } catch(_){}
+  while (cache.order.length > maxItems) {
     const k = cache.order.shift();
     delete cache.map[k];
   }
@@ -184,6 +203,7 @@ function buildUserJSONPayload(items) {
 
 // Provider adapters
 async function callOpenAI(apiKey, model, sys, payload) {
+  const url = 'https://api.openai.com/v1/chat/completions';
   const body = {
     model,
     temperature: 0.2,
@@ -193,21 +213,22 @@ async function callOpenAI(apiKey, model, sys, payload) {
       { role: 'user', content: JSON.stringify(payload) },
     ],
   };
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const init = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`OpenAI error: ${res.status} ${await res.text()}`);
+  };
+  const res = await fetchWithBackoff(url, init);
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || '{}';
   return safeJson(text);
 }
 
 async function callAnthropic(apiKey, model, sys, payload) {
+  const url = 'https://api.anthropic.com/v1/messages';
   const body = {
     model,
     max_tokens: 4096,
@@ -217,7 +238,7 @@ async function callAnthropic(apiKey, model, sys, payload) {
       { role: 'user', content: [{ type: 'text', text: JSON.stringify(payload) }] },
     ],
   };
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const init = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -225,8 +246,8 @@ async function callAnthropic(apiKey, model, sys, payload) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Anthropic error: ${res.status} ${await res.text()}`);
+  };
+  const res = await fetchWithBackoff(url, init);
   const data = await res.json();
   const text = data?.content?.[0]?.text || '{}';
   return safeJson(text);
@@ -244,12 +265,11 @@ async function callGemini(apiKey, model, sys, payload) {
       responseMimeType: 'application/json'
     }
   };
-  const res = await fetch(url, {
+  const res = await fetchWithBackoff(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Gemini error: ${res.status} ${await res.text()}`);
   const data = await res.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
   return safeJson(text);
@@ -299,6 +319,27 @@ async function callGroq(apiKey, model, sys, payload) {
     throw new Error(`Groq error: ${status} ${text}`);
   }
   throw new Error(`Groq error: 429 ${lastErrText}`);
+}
+
+async function fetchWithBackoff(url, init){
+  let lastErr = '';
+  for (let attempt = 0; attempt < 4; attempt++){
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    const status = res.status;
+    const text = await res.text().catch(() => '');
+    lastErr = `${status} ${text}`;
+    if (status === 429 || (status >= 500 && status < 600)){
+      const serverWait = parseRetryAfterMs(res, text);
+      const base = 400 * (2 ** attempt);
+      const jitter = Math.floor(Math.random() * 200);
+      const waitMs = Math.max(serverWait, base) + jitter;
+      await sleep(waitMs);
+      continue;
+    }
+    throw new Error(`HTTP ${status} ${text}`);
+  }
+  throw new Error(`HTTP 429 ${lastErr}`);
 }
 
 function safeJson(text){
@@ -446,6 +487,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return;
       }
 
+      if (msg?.type === 'get_cache_stats') {
+        const cache = await getCache();
+        const count = Array.isArray(cache.order) ? cache.order.length : 0;
+        let lastUpdated = 0;
+        if (cache.map) {
+          for (const k of Object.keys(cache.map)) {
+            const t = cache.map[k] && cache.map[k].t || 0;
+            if (t > lastUpdated) lastUpdated = t;
+          }
+        }
+        // also return current limit
+        const s = await getSettings();
+        const limit = typeof s.cacheMaxItems === 'number' ? s.cacheMaxItems : LRU_MAX_ITEMS;
+        sendResponse({ ok: true, count, lastUpdated, limit });
+        return;
+      }
+
       if (msg?.type === 'open_options') {
         chrome.runtime.openOptionsPage();
         sendResponse({ ok: true });
@@ -458,6 +516,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
   })();
   return true; // async response
+});
+
+// Keyboard commands → bridge to contentScript
+try {
+  chrome.commands.onCommand.addListener(async (command) => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    if (isRestrictedUrl(tab.url || '')) return;
+    if (command === 'ft-translate-page') {
+      chrome.tabs.sendMessage(tab.id, { type: 'translate_page' });
+    } else if (command === 'ft-restore-page') {
+      chrome.tabs.sendMessage(tab.id, { type: 'restore_page' });
+    } else if (command === 'ft-translate-selection') {
+      chrome.tabs.sendMessage(tab.id, { type: 'translate_selection' });
+    } else if (command === 'ft-toggle-panel') {
+      chrome.tabs.sendMessage(tab.id, { type: 'toggle_panel' });
+    }
+  });
+} catch(_){}
+
+// Toggle panel via command or from popup
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type !== 'toggle_panel_state') return; // allow fallthrough to main listener above
 });
 
 // Streaming translation via Port API

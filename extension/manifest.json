@@ -45,6 +45,29 @@
       "run_at": "document_idle"
     }
   ],
+  "commands": {
+    "ft-translate-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y",
+        "mac": "Alt+Shift+Y"
+      },
+      "description": "Translate current page"
+    },
+    "ft-restore-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+U",
+        "mac": "Alt+Shift+U"
+      },
+      "description": "Restore original text"
+    },
+    "ft-toggle-panel": {
+      "suggested_key": {
+        "default": "Alt+Q",
+        "mac": "Alt+Q"
+      },
+      "description": "Toggle translation panel"
+    }
+  },
   "options_page": "options.html",
   "web_accessible_resources": [
     {
